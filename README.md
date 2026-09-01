@@ -1,0 +1,55 @@
+# 青年理论知识网络学习竞赛·刷题练习（第二期）
+
+根据《中国华电集团有限公司青年理论知识网络学习竞赛题库（第二期）》制作的手机刷题小程序：7 大部分共 580 题（单选/多选/判断），每题附 AI 生成的解析和记忆口诀。
+
+## 功能
+
+- 按 7 大部分刷题，支持顺序 / 随机两种模式
+- 答完立即显示对错、正确答案、解析、记忆口诀
+- 错题自动进入错题本，错题重练连续答对 2 次自动移出
+- 每题可收藏，收藏夹单独刷
+- 首页统计已练题数、正确率、各部分进度
+- 所有记录保存在本机浏览器（localStorage），无需联网、无需账号
+
+## 使用方法
+
+### 方式一：电脑/手机浏览器直接打开
+双击 `index.html` 即可使用（需保持 `data/`、`app.js`、`style.css` 与 `index.html` 在同一目录）。
+
+### 方式二：局域网手机访问（推荐多人使用）
+在本目录运行：
+
+```
+python -m http.server 8000
+```
+
+手机连接同一 Wi-Fi，浏览器访问 `http://<电脑IP>:8000`（电脑 IP 用 `ipconfig` 查看）。
+
+### 方式三：部署到静态托管
+把整个目录上传到任意静态托管（GitHub Pages、Vercel、内网 Nginx 等），把链接发给同事即可。
+
+## 目录结构
+
+```
+index.html            应用入口
+style.css             移动端样式
+app.js                应用逻辑
+data/questions.js     题库数据（580 题 + 解析 + 口诀）
+data/questions.json   同内容 JSON 版本（便于二次加工）
+tools/                题库提取与构建脚本
+  extract_questions.py  PDF -> questions_raw.json
+  build_questions.py    合并解析 -> questions.js（含完整性校验）
+  dump.py               按 id 区间查看题目
+  check_app.js          前端引用与数据完整性检查
+```
+
+## 注意事项
+
+- 做题记录保存在浏览器本地，清除浏览器站点数据会丢失记录；换手机/换浏览器记录不互通。
+- 解析与口诀为 AI 生成、已做抽查，个别表述请以官方文件原文为准；发现问题可按题号反馈修正。
+
+## 数据修正流程
+
+1. 修改 `data/explanations/batch_*.json` 中对应题号的解析/口诀；
+2. 运行 `python tools/build_questions.py` 重新生成 `data/questions.js`；
+3. 运行 `node tools/check_app.js` 校验。

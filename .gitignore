@@ -1,0 +1,10 @@
+# 上一个流程的中间产物
+build/
+parse.py
+
+# 数据加工中间文件（可用 tools/ 脚本重新生成）
+data/fulltext.txt
+data/questions_raw.json
+
+# 原题库 PDF 不公开上传
+*.pdf
