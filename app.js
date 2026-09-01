@@ -2,11 +2,16 @@
 (function () {
   "use strict";
 
-  var BANK = window.QUESTION_BANK || [];
+  var BANK = null;
   var PARTS = [];
-  BANK.forEach(function (q) {
-    if (PARTS.indexOf(q.part) === -1) PARTS.push(q.part);
-  });
+
+  function setBank(list) {
+    BANK = list;
+    PARTS = [];
+    BANK.forEach(function (q) {
+      if (PARTS.indexOf(q.part) === -1) PARTS.push(q.part);
+    });
+  }
 
   /* ---------- 本地存储 ---------- */
   var LS = {
@@ -291,5 +296,76 @@
   $("btn-fav").addEventListener("click", toggleFav);
   $("btn-confirm").addEventListener("click", function () { submitAnswer(currentQ()); });
 
-  renderHome();
+  /* ---------- 解锁与启动 ---------- */
+  var SS_KEY = "hdq_bank_session";
+
+  function b64ToBytes(b64) {
+    var bin = atob(b64);
+    var bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return bytes;
+  }
+
+  function decryptBank(password, payload) {
+    return crypto.subtle
+      .importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveKey"])
+      .then(function (baseKey) {
+        return crypto.subtle.deriveKey(
+          { name: "PBKDF2", salt: b64ToBytes(payload.salt), iterations: payload.iter, hash: "SHA-256" },
+          baseKey,
+          { name: "AES-GCM", length: 256 },
+          false,
+          ["decrypt"]
+        );
+      })
+      .then(function (key) {
+        return crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: b64ToBytes(payload.iv) },
+          key,
+          b64ToBytes(payload.data)
+        );
+      })
+      .then(function (buf) {
+        return JSON.parse(new TextDecoder().decode(buf));
+      });
+  }
+
+  function enterApp(list) {
+    setBank(list);
+    $("view-lock").classList.add("hidden");
+    renderHome();
+  }
+
+  function tryUnlock() {
+    var pwd = $("lock-input").value;
+    if (!pwd) return;
+    decryptBank(pwd, window.QUESTION_ENC)
+      .then(function (list) {
+        try { sessionStorage.setItem(SS_KEY, JSON.stringify(list)); } catch (e) {}
+        enterApp(list);
+      })
+      .catch(function () {
+        $("lock-error").classList.remove("hidden");
+        $("lock-input").value = "";
+        $("lock-input").focus();
+      });
+  }
+
+  function boot() {
+    // 本地开发：存在明文题库则直接进入
+    if (window.QUESTION_BANK) { enterApp(window.QUESTION_BANK); return; }
+    // 同一会话内已解锁过（刷新免输密码，关闭标签页即失效）
+    try {
+      var cached = sessionStorage.getItem(SS_KEY);
+      if (cached) { enterApp(JSON.parse(cached)); return; }
+    } catch (e) {}
+    $("view-lock").classList.remove("hidden");
+    $("lock-btn").addEventListener("click", tryUnlock);
+    $("lock-input").addEventListener("keydown", function (e) {
+      if (e.key === "Enter") tryUnlock();
+    });
+    $("lock-input").focus();
+  }
+
+  boot();
 })();

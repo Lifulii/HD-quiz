@@ -13,8 +13,23 @@
 
 ## 使用方法
 
+### 首次发布前：设置访问密码（重要）
+
+题库按内部资料处理，仓库中只保存**加密后**的题库（`data/questions.enc.js`），
+明文数据不会上传。发布前用你自己的密码生成密文：
+
+```
+node tools/encrypt_data.js "你的访问密码"
+```
+
+- 密码至少 6 位，建议用单位易记口令，如 `Huadian@2026`；
+- 密码通过微信群/口头告知同事，不要写进仓库；
+- 想换密码：重新运行上面的命令再提交推送即可。
+
+同事打开网页后先输密码，验证通过才能刷题；同一标签页会话内刷新免输。
+
 ### 方式一：电脑/手机浏览器直接打开
-双击 `index.html` 即可使用（需保持 `data/`、`app.js`、`style.css` 与 `index.html` 在同一目录）。
+双击 `index.html` 即可使用（需保持 `data/`、`app.js`、`style.css` 与 `index.html` 在同一目录），输入密码进入。
 
 ### 方式二：局域网手机访问（推荐多人使用）
 在本目录运行：
@@ -52,4 +67,5 @@ tools/                题库提取与构建脚本
 
 1. 修改 `data/explanations/batch_*.json` 中对应题号的解析/口诀；
 2. 运行 `python tools/build_questions.py` 重新生成 `data/questions.js`；
-3. 运行 `node tools/check_app.js` 校验。
+3. 运行 `node tools/encrypt_data.js "你的访问密码"` 重新生成密文；
+4. 运行 `node tools/check_app.js` 校验后提交推送。

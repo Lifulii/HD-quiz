@@ -6,5 +6,10 @@ parse.py
 data/fulltext.txt
 data/questions_raw.json
 
+# 明文题库与解析不公开上传（仓库只放密文 questions.enc.js）
+data/questions.js
+data/questions.json
+data/explanations/
+
 # 原题库 PDF 不公开上传
 *.pdf
