@@ -43,7 +43,10 @@
     title: "",
     context: "part", // part | wrong | fav
     answered: false,
-    selected: []     // 当前已选字母
+    selected: [],    // 当前已选字母
+    ans: {},         // 本次练习作答记录 {id: {mine:[字母], ok:bool}}，用于回看与题号面板
+    done: 0,
+    right: 0
   };
 
   /* ---------- 工具 ---------- */
@@ -114,7 +117,7 @@
     state.list = orderMode === "rand" ? shuffle(qs) : qs;
     state.title = part;
     state.context = "part";
-    state.index = 0;
+    resetSession();
     showQuiz();
   }
 
@@ -130,12 +133,20 @@
     state.list = orderMode === "rand" ? shuffle(qs) : qs;
     state.title = kind === "wrong" ? "错题本" : "收藏夹";
     state.context = kind;
-    state.index = 0;
+    resetSession();
     showQuiz();
+  }
+
+  function resetSession() {
+    state.index = 0;
+    state.ans = {};
+    state.done = 0;
+    state.right = 0;
   }
 
   function showQuiz() {
     $("view-home").classList.add("hidden");
+    $("view-result").classList.add("hidden");
     $("view-quiz").classList.remove("hidden");
     renderQuestion();
     window.scrollTo(0, 0);
@@ -143,6 +154,7 @@
 
   function goHome() {
     $("view-quiz").classList.add("hidden");
+    $("view-result").classList.add("hidden");
     $("view-home").classList.remove("hidden");
     renderHome();
     window.scrollTo(0, 0);
@@ -152,8 +164,9 @@
 
   function renderQuestion() {
     var q = currentQ();
-    state.answered = false;
-    state.selected = [];
+    var rec = state.ans[q.id] || null;
+    state.answered = !!rec;
+    state.selected = rec ? rec.mine.slice() : [];
 
     $("quiz-title").textContent = state.title;
     $("quiz-progress").textContent = (state.index + 1) + " / " + state.list.length;
@@ -161,7 +174,7 @@
     $("q-type-tag").textContent = TYPE_NAME[q.type] + (q.type === "multi" ? "（可选多项）" : "");
     $("q-stem").textContent = q.stem;
     $("feedback").classList.add("hidden");
-    $("btn-confirm").classList.toggle("hidden", q.type !== "multi");
+    $("btn-confirm").classList.toggle("hidden", q.type !== "multi" || state.answered);
 
     var favOn = !!favorites[q.id];
     $("btn-fav").textContent = favOn ? "★" : "☆";
@@ -178,8 +191,11 @@
       box.appendChild(b);
     });
 
+    // 回看已答过的题：还原当时的作答状态和解析板块
+    if (rec) applyResult(q, rec);
+
     $("btn-prev").disabled = state.index === 0;
-    $("btn-next").textContent = state.index === state.list.length - 1 ? "完成" : "下一题";
+    $("btn-next").textContent = state.index === state.list.length - 1 ? "查看结果" : "下一题 ›";
   }
 
   function onOptionTap(q, letter, btn) {
@@ -224,7 +240,21 @@
     }
     save(LS.wrong, wrongBook);
 
-    // 选项标色
+    // 会话内记录（回看/题号面板用）
+    state.ans[q.id] = { mine: state.selected.slice().sort(), ok: right };
+    state.done += 1;
+    if (right) state.right += 1;
+
+    applyResult(q, state.ans[q.id]);
+
+    setTimeout(function () {
+      $("feedback").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 100);
+  }
+
+  // 选项标色 + 反馈区渲染（作答后和回看时共用）
+  function applyResult(q, rec) {
+    var picked = rec.mine.slice().sort().join("");
     var opts = document.querySelectorAll("#q-options .opt");
     opts.forEach(function (b) {
       var letter = b.getAttribute("data-letter");
@@ -235,21 +265,23 @@
     });
     $("btn-confirm").classList.add("hidden");
 
-    // 反馈区
     var verdict = $("fb-verdict");
-    verdict.textContent = right ? "✓ 回答正确" : "✗ 回答错误";
-    verdict.className = "fb-verdict " + (right ? "right" : "bad");
+    verdict.textContent = rec.ok ? "✓ 回答正确" : "✗ 回答错误";
+    verdict.className = "fb-verdict " + (rec.ok ? "right" : "bad");
     var ansText = q.type === "judge"
       ? (q.answer === "A" ? "正确" : "错误")
       : q.answer.split("").join("、");
     $("fb-answer").textContent = ansText;
     $("fb-explanation").textContent = q.explanation || "（解析整理中）";
     $("fb-mnemonic").textContent = q.mnemonic || "（口诀整理中）";
+    var detBlock = $("fb-detail-block");
+    if (q.detail) {
+      $("fb-detail").textContent = q.detail;
+      detBlock.classList.remove("hidden");
+    } else {
+      detBlock.classList.add("hidden");
+    }
     $("feedback").classList.remove("hidden");
-
-    setTimeout(function () {
-      $("feedback").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }, 100);
   }
 
   function nextQuestion() {
@@ -258,8 +290,7 @@
       renderQuestion();
       window.scrollTo(0, 0);
     } else {
-      toast("本轮练习完成！");
-      goHome();
+      viewResult();
     }
   }
 
@@ -269,6 +300,49 @@
       renderQuestion();
       window.scrollTo(0, 0);
     }
+  }
+
+  /* ---------- 结果页 ---------- */
+  function viewResult() {
+    var wrong = state.done - state.right;
+    var rate = state.done ? Math.round(state.right / state.done * 100) : 0;
+    $("rs-rate").textContent = rate + "%";
+    $("rs-title").textContent = state.title + " · 本次正确率";
+    $("rs-done").textContent = state.done;
+    $("rs-right").textContent = state.right;
+    $("rs-wrong").textContent = wrong;
+    $("rs-tip").textContent = wrong ? "答错的题目已自动收入错题本" : "全部答对，太棒了！";
+    $("btn-r-wrong").classList.toggle("hidden", !wrong);
+    $("view-quiz").classList.add("hidden");
+    $("view-result").classList.remove("hidden");
+    window.scrollTo(0, 0);
+  }
+
+  /* ---------- 题号选择面板 ---------- */
+  function openJump() {
+    $("jump-title").textContent = "选择题号 · " + state.title + "（共" + state.list.length + "题）";
+    var grid = $("jump-grid");
+    grid.innerHTML = "";
+    state.list.forEach(function (q, i) {
+      var rec = state.ans[q.id];
+      var b = document.createElement("button");
+      b.textContent = i + 1;
+      b.className = (rec ? (rec.ok ? "jg" : "jr") : "") + (i === state.index ? " cur" : "");
+      b.addEventListener("click", function () {
+        state.index = i;
+        closeJump();
+        renderQuestion();
+        window.scrollTo(0, 0);
+      });
+      grid.appendChild(b);
+    });
+    $("jump-mask").classList.remove("hidden");
+    var cur = grid.querySelector(".cur");
+    if (cur) cur.scrollIntoView({ block: "center" });
+  }
+
+  function closeJump() {
+    $("jump-mask").classList.add("hidden");
   }
 
   function toggleFav() {
@@ -295,6 +369,13 @@
   $("btn-prev").addEventListener("click", prevQuestion);
   $("btn-fav").addEventListener("click", toggleFav);
   $("btn-confirm").addEventListener("click", function () { submitAnswer(currentQ()); });
+  $("btn-jump").addEventListener("click", openJump);
+  $("jump-close").addEventListener("click", closeJump);
+  $("jump-mask").addEventListener("click", function (e) {
+    if (e.target === this) closeJump();
+  });
+  $("btn-r-home").addEventListener("click", goHome);
+  $("btn-r-wrong").addEventListener("click", function () { startSpecial("wrong"); });
 
   /* ---------- 解锁与启动 ---------- */
   var SS_KEY = "hdq_bank_session";

@@ -80,6 +80,10 @@
           <div class="fb-title">📖 解析</div>
           <div id="fb-explanation" class="fb-text"></div>
         </div>
+        <div class="fb-block detail-block hidden" id="fb-detail-block">
+          <div class="fb-title">📚 知识点详解</div>
+          <div id="fb-detail" class="fb-text detail"></div>
+        </div>
         <div class="fb-block mnemonic-block">
           <div class="fb-title">🧠 记忆口诀</div>
           <div id="fb-mnemonic" class="fb-text mnemonic"></div>
@@ -88,10 +92,45 @@
     </main>
 
     <footer class="quiz-footer">
-      <button id="btn-prev" class="nav-btn">上一题</button>
-      <button id="btn-next" class="nav-btn primary">下一题</button>
+      <button id="btn-prev" class="nav-btn">‹ 上一题</button>
+      <button id="btn-jump" class="nav-btn jump">☰ 题号</button>
+      <button id="btn-next" class="nav-btn primary">下一题 ›</button>
     </footer>
   </section>
+
+  <!-- 结果页 -->
+  <section id="view-result" class="view hidden">
+    <div class="result-wrap">
+      <div class="result-card">
+        <div id="rs-rate" class="rs-rate">0%</div>
+        <div id="rs-title" class="rs-sub">本次正确率</div>
+        <div class="rs-row">
+          <div><b id="rs-done">0</b><span>完成</span></div>
+          <div><b id="rs-right" class="g">0</b><span>答对</span></div>
+          <div><b id="rs-wrong" class="r">0</b><span>答错</span></div>
+        </div>
+        <p id="rs-tip" class="rs-tip"></p>
+        <div class="rs-btns">
+          <button id="btn-r-home" class="nav-btn">返回首页</button>
+          <button id="btn-r-wrong" class="nav-btn primary">重练错题</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 题号选择面板 -->
+  <div id="jump-mask" class="jump-mask hidden">
+    <div class="jump-box">
+      <div class="jump-head"><span id="jump-title"></span><button id="jump-close">✕</button></div>
+      <div class="jump-legend">
+        <span><i class="dot g"></i>答对</span>
+        <span><i class="dot r"></i>答错</span>
+        <span><i class="dot n"></i>未答</span>
+        <span class="jump-legend-right">当前题有红框标记</span>
+      </div>
+      <div id="jump-grid" class="jump-grid"></div>
+    </div>
+  </div>
 
   <!-- 空列表提示 -->
   <div id="toast" class="toast hidden"></div>
