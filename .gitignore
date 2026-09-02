@@ -17,3 +17,7 @@ data/explanations/
 # Cloudflare Pages 部署包（tools 脚本生成）
 dist/
 dist.zip
+
+# 单文件版与题库全文为明文，不进仓库
+刷题.html
+题库全文.txt
