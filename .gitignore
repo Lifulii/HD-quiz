@@ -13,3 +13,7 @@ data/explanations/
 
 # 原题库 PDF 不公开上传
 *.pdf
+
+# Cloudflare Pages 部署包（tools 脚本生成）
+dist/
+dist.zip
