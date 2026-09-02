@@ -22,7 +22,7 @@ const zip = path.join(root, "dist.zip");
 fs.rmSync(zip, { force: true });
 // PowerShell Compress-Archive（Windows 自带）
 execSync(
-  `powershell -NoProfile -Command "Compress-Archive -Path '${dist}\\*' -DestinationPath '${zip}'"`,
+  `powershell -NoProfile -Command "Compress-Archive -Path '${dist}\\*' -DestinationPath '${zip}' -Force"`,
   { stdio: "inherit" }
 );
 
