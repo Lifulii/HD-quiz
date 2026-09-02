@@ -18,7 +18,8 @@
     records: "hdq_records_v1",   // {id: {seen:n, right:n}}
     wrong: "hdq_wrong_v1",       // {id: streak} streak=错题重练连续答对次数
     fav: "hdq_fav_v1",           // {id: true}
-    order: "hdq_order_v1"        // "seq" | "rand"
+    order: "hdq_order_v1",       // "seq" | "rand"
+    shuffle: "hdq_shuffle_v1"    // true=打乱选项顺序（判断题除外）
   };
 
   function load(key, def) {
@@ -35,6 +36,7 @@
   var wrongBook = load(LS.wrong, {});
   var favorites = load(LS.fav, {});
   var orderMode = load(LS.order, "seq");
+  var shuffleOpt = load(LS.shuffle, true);
 
   /* ---------- 状态 ---------- */
   var state = {
@@ -43,8 +45,9 @@
     title: "",
     context: "part", // part | wrong | fav
     answered: false,
-    selected: [],    // 当前已选字母
-    ans: {},         // 本次练习作答记录 {id: {mine:[字母], ok:bool}}，用于回看与题号面板
+    selected: [],    // 当前已选字母（显示顺序）
+    ans: {},         // 本次练习作答记录 {id: {mine:[显示字母], ok:bool}}，用于回看与题号面板
+    orders: {},      // 本次练习选项乱序映射 {id: [原始选项序号，按显示顺序]}，回看时还原
     done: 0,
     right: 0
   };
@@ -109,6 +112,7 @@
     segBtns.forEach(function (b) {
       b.classList.toggle("active", b.getAttribute("data-order") === orderMode);
     });
+    $("sw-shuffle").checked = shuffleOpt;
   }
 
   /* ---------- 刷题 ---------- */
@@ -140,6 +144,7 @@
   function resetSession() {
     state.index = 0;
     state.ans = {};
+    state.orders = {};
     state.done = 0;
     state.right = 0;
   }
@@ -179,14 +184,22 @@
     var favOn = !!favorites[q.id];
     $("btn-fav").textContent = favOn ? "★" : "☆";
 
+    // 选项显示顺序（打乱选项时本练习内保持一致，回看可还原）
+    var order = state.orders[q.id];
+    if (!order) {
+      order = q.options.map(function (_, i) { return i; });
+      if (shuffleOpt && q.type !== "judge") order = shuffle(order);
+      state.orders[q.id] = order;
+    }
+
     var box = $("q-options");
     box.innerHTML = "";
-    q.options.forEach(function (text, i) {
-      var letter = String.fromCharCode(65 + i);
+    order.forEach(function (oi, di) {
+      var letter = String.fromCharCode(65 + di);
       var b = document.createElement("button");
       b.className = "opt";
       b.setAttribute("data-letter", letter);
-      b.innerHTML = '<span class="opt-letter">' + letter + '</span><span class="opt-text">' + text + "</span>";
+      b.innerHTML = '<span class="opt-letter">' + letter + '</span><span class="opt-text">' + q.options[oi] + "</span>";
       b.addEventListener("click", function () { onOptionTap(q, letter, b); });
       box.appendChild(b);
     });
@@ -215,12 +228,26 @@
     }
   }
 
+  // 正确答案的显示字母（按当前题的选项乱序映射换算）
+  function correctDispLetters(q) {
+    var order = state.orders[q.id] || q.options.map(function (_, i) { return i; });
+    var res = [];
+    order.forEach(function (oi, di) {
+      if (q.answer.indexOf(String.fromCharCode(65 + oi)) >= 0) res.push(String.fromCharCode(65 + di));
+    });
+    return res.sort();
+  }
+
   function submitAnswer(q) {
     if (state.answered) return;
     if (!state.selected.length) { toast("请先选择答案"); return; }
     state.answered = true;
 
-    var picked = state.selected.slice().sort().join("");
+    // 显示字母 -> 原始字母再比对（判断题顺序固定，映射即恒等）
+    var order = state.orders[q.id];
+    var picked = state.selected.map(function (L) {
+      return String.fromCharCode(65 + order[L.charCodeAt(0) - 65]);
+    }).sort().join("");
     var right = picked === q.answer;
 
     // 记录
@@ -254,14 +281,14 @@
 
   // 选项标色 + 反馈区渲染（作答后和回看时共用）
   function applyResult(q, rec) {
-    var picked = rec.mine.slice().sort().join("");
+    var correctDisp = correctDispLetters(q);
     var opts = document.querySelectorAll("#q-options .opt");
     opts.forEach(function (b) {
       var letter = b.getAttribute("data-letter");
       b.classList.add("disabled");
       b.classList.remove("selected");
-      if (q.answer.indexOf(letter) >= 0) b.classList.add("correct");
-      else if (picked.indexOf(letter) >= 0) b.classList.add("wrong");
+      if (correctDisp.indexOf(letter) >= 0) b.classList.add("correct");
+      else if (rec.mine.indexOf(letter) >= 0) b.classList.add("wrong");
     });
     $("btn-confirm").classList.add("hidden");
 
@@ -270,7 +297,7 @@
     verdict.className = "fb-verdict " + (rec.ok ? "right" : "bad");
     var ansText = q.type === "judge"
       ? (q.answer === "A" ? "正确" : "错误")
-      : q.answer.split("").join("、");
+      : correctDisp.join("、");
     $("fb-answer").textContent = ansText;
     $("fb-explanation").textContent = q.explanation || "（解析整理中）";
     $("fb-mnemonic").textContent = q.mnemonic || "（口诀整理中）";
@@ -376,6 +403,10 @@
   });
   $("btn-r-home").addEventListener("click", goHome);
   $("btn-r-wrong").addEventListener("click", function () { startSpecial("wrong"); });
+  $("sw-shuffle").addEventListener("change", function () {
+    shuffleOpt = this.checked;
+    save(LS.shuffle, shuffleOpt);
+  });
 
   /* ---------- 解锁与启动 ---------- */
   var SS_KEY = "hdq_bank_session";

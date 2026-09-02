@@ -35,11 +35,23 @@
       </div>
     </header>
 
-    <div class="mode-bar">
-      <span class="mode-label">刷题顺序</span>
-      <div class="seg" id="order-seg">
-        <button data-order="seq" class="seg-btn active">顺序</button>
-        <button data-order="rand" class="seg-btn">随机</button>
+    <div class="settings-card">
+      <div class="setrow">
+        <div class="setrow-info">
+          <div class="setrow-label">打乱选项顺序</div>
+          <div class="setrow-tip">选择题 ABCD 位置随机排列（判断题不受影响）</div>
+        </div>
+        <label class="sw"><input type="checkbox" id="sw-shuffle"><i></i></label>
+      </div>
+      <div class="setrow">
+        <div class="setrow-info">
+          <div class="setrow-label">出题顺序</div>
+          <div class="setrow-tip">顺序按题库编号，随机每次重新洗牌</div>
+        </div>
+        <div class="seg" id="order-seg">
+          <button data-order="seq" class="seg-btn active">顺序</button>
+          <button data-order="rand" class="seg-btn">随机</button>
+        </div>
       </div>
     </div>
 
